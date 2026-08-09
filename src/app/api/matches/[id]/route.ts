@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches } from "@/lib/db/schema";
 import { getCourtRefs } from "@/lib/courtRefs";
+import { deriveRoundLabelFromTime } from "@/lib/scheduleTimes";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -45,6 +46,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     refId2 = derived.refId2;
   }
 
+  // A match's roundLabel follows its scheduledTime — re-derive it from the
+  // canonical time grid on a time change, same pattern as refs following
+  // courtId above. A time that isn't an exact hit on the grid (fully
+  // custom, off-grid) leaves the existing label untouched rather than
+  // guessing.
+  let roundLabel: string | undefined;
+  if (body.scheduledTime !== undefined && body.scheduledTime) {
+    const derived = deriveRoundLabelFromTime(new Date(body.scheduledTime));
+    if (derived) roundLabel = derived;
+  }
+
   await db
     .update(matches)
     .set({
@@ -54,6 +66,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       ...(body.scheduledTime !== undefined
         ? { scheduledTime: body.scheduledTime ? new Date(body.scheduledTime) : null }
         : {}),
+      ...(roundLabel !== undefined ? { roundLabel } : {}),
     })
     .where(eq(matches.id, Number(id)));
 

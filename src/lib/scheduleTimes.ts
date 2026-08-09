@@ -34,3 +34,26 @@ export const KNOCKOUT_ROUND_TIMES = {
   semifinal: eventTime(18, 20), // 6:20–6:35 PM
   final: eventTime(18, 45), // 6:45–7:20 PM (longer: two-half championship format)
 };
+
+// Reverse lookup: given a match's new scheduledTime, what roundLabel does
+// that slot correspond to on the canonical grid above? Used to keep
+// roundLabel in sync when an admin manually edits a match's time (e.g. a
+// swap) — mirrors how getCourtRefs re-derives refs from a court change.
+// Returns null for a time that isn't an exact hit on the grid (a fully
+// custom off-grid time), in which case callers should leave the existing
+// roundLabel untouched rather than guessing.
+export function deriveRoundLabelFromTime(time: Date): string | null {
+  const t = time.getTime();
+
+  const groupIndex = GROUP_STAGE_START_TIMES.findIndex((slot) => slot.getTime() === t);
+  if (groupIndex !== -1) return `Group Stage ${groupIndex + 1}`;
+
+  if (t === KNOCKOUT_ROUND_TIMES.r16Wave1.getTime() || t === KNOCKOUT_ROUND_TIMES.r16Wave2.getTime()) {
+    return "Round of 16";
+  }
+  if (t === KNOCKOUT_ROUND_TIMES.quarterfinal.getTime()) return "Quarterfinal";
+  if (t === KNOCKOUT_ROUND_TIMES.semifinal.getTime()) return "Semifinal";
+  if (t === KNOCKOUT_ROUND_TIMES.final.getTime()) return "Final";
+
+  return null;
+}

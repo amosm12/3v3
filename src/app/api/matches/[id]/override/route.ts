@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches } from "@/lib/db/schema";
 import { propagateWinnerInTransaction } from "@/lib/matchFinalize";
+import { deriveRoundLabelFromTime } from "@/lib/scheduleTimes";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -29,6 +30,16 @@ export async function POST(request: Request, { params }: RouteParams) {
   const existing = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
   if (!existing) return NextResponse.json({ error: "Match not found" }, { status: 404 });
 
+  // A match's roundLabel follows its scheduledTime — re-derive it from the
+  // canonical time grid on a time change (see /api/matches/[id]/route.ts for
+  // the same pattern). A time that isn't an exact hit on the grid leaves the
+  // existing label untouched rather than guessing.
+  let roundLabel: string | undefined;
+  if (body.scheduledTime !== undefined && body.scheduledTime) {
+    const derived = deriveRoundLabelFromTime(new Date(body.scheduledTime));
+    if (derived) roundLabel = derived;
+  }
+
   const result = await db.transaction(async (tx) => {
     const [updated] = await tx
       .update(matches)
@@ -45,6 +56,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         ...(body.scheduledTime !== undefined
           ? { scheduledTime: body.scheduledTime ? new Date(body.scheduledTime) : null }
           : {}),
+        ...(roundLabel !== undefined ? { roundLabel } : {}),
       })
       .where(eq(matches.id, matchId))
       .returning();
