@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin/schedule", label: "Schedule" },
   { href: "/admin/refs", label: "Refs" },
   { href: "/admin/seeding", label: "Knockout Seeding" },
+  { href: "/admin/knockout-refs", label: "Knockout Ref Assignments" },
   { href: "/admin/matches", label: "Match Overrides" },
   { href: "/admin/settings", label: "Phase & Reset" },
 ];

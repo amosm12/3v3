@@ -15,6 +15,7 @@ type OverrideBody = Partial<{
   status: "scheduled" | "in_progress" | "final";
   courtId: number | null;
   refId: number | null;
+  refId2: number | null;
   scheduledTime: string | null;
 }>;
 
@@ -40,6 +41,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         ...(body.status !== undefined ? { status: body.status } : {}),
         ...(body.courtId !== undefined ? { courtId: body.courtId } : {}),
         ...(body.refId !== undefined ? { refId: body.refId } : {}),
+        ...(body.refId2 !== undefined ? { refId2: body.refId2 } : {}),
         ...(body.scheduledTime !== undefined
           ? { scheduledTime: body.scheduledTime ? new Date(body.scheduledTime) : null }
           : {}),

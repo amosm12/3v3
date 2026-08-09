@@ -2,10 +2,9 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePolling } from "@/components/usePolling";
 import type { MatchWithNames } from "@/lib/types";
-import { WIN_SCORE } from "@/lib/constants";
 
 function lockStorageKey(matchId: string) {
   return `match_lock_${matchId}`;
@@ -13,13 +12,27 @@ function lockStorageKey(matchId: string) {
 
 export default function ScorekeepingPage() {
   const { refSlug, matchId } = useParams<{ refSlug: string; matchId: string }>();
-  const { data: match, loading } = usePolling<MatchWithNames>(`/api/matches/${matchId}`, 2500);
+  const { data: polledMatch, loading } = usePolling<MatchWithNames>(`/api/matches/${matchId}`, 2500);
 
   const [myToken, setMyToken] = useState<string | null>(() =>
     typeof window !== "undefined" ? localStorage.getItem(lockStorageKey(matchId)) : null,
   );
   const [banner, setBanner] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Score taps render instantly against this local copy instead of waiting
+  // on a round trip + the next poll tick. While a score request we fired is
+  // still in flight, incoming poll data is ignored (it may be stale relative
+  // to our own pending write) — `pendingScoreRequests` tracks that count, and
+  // each request's own response reconciles `match` directly when it lands.
+  const [match, setMatch] = useState<MatchWithNames | null>(null);
+  const pendingScoreRequests = useRef(0);
+
+  useEffect(() => {
+    if (polledMatch && pendingScoreRequests.current === 0) {
+      setMatch(polledMatch);
+    }
+  }, [polledMatch]);
 
   async function startMatch() {
     setBusy(true);
@@ -38,23 +51,39 @@ export default function ScorekeepingPage() {
     }
   }
 
-  async function score(team: "A" | "B", delta: 1 | 2 | -1) {
-    if (!myToken || busy) return;
-    setBusy(true);
+  function score(team: "A" | "B", delta: 1 | 2 | -1) {
+    if (!myToken || !match || match.status !== "in_progress" || match.lockToken !== myToken) return;
+
+    // Apply instantly, send in the background. The score endpoint applies
+    // deltas atomically server-side (GREATEST(col + delta, 0) in one
+    // conditional UPDATE), so concurrent/rapid taps stay correct without
+    // needing to serialize them client-side — no reason to block the button
+    // on the network round trip.
+    const key = team === "A" ? "scoreA" : "scoreB";
     setBanner(null);
-    try {
-      const res = await fetch(`/api/matches/${matchId}/score`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: myToken, team, delta }),
+    setMatch((cur) => (cur ? { ...cur, [key]: Math.max(cur[key] + delta, 0) } : cur));
+    pendingScoreRequests.current += 1;
+
+    fetch(`/api/matches/${matchId}/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: myToken, team, delta }),
+    })
+      .then(async (res) => {
+        const body = await res.json();
+        if (!res.ok) {
+          setBanner(body.message ?? "Could not update score.");
+          return;
+        }
+        // The score route returns bare match columns (no team/court/ref
+        // relations, to keep the hot path fast) — merge over the relations
+        // we already have rather than replacing the whole object.
+        setMatch((cur) => (cur ? { ...cur, ...body } : body));
+      })
+      .catch(() => setBanner("Network error — will resync shortly."))
+      .finally(() => {
+        pendingScoreRequests.current -= 1;
       });
-      const body = await res.json();
-      if (!res.ok) {
-        setBanner(body.message ?? "Could not update score.");
-      }
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function finalizeManually() {
@@ -155,12 +184,12 @@ export default function ScorekeepingPage() {
               disabled={busy}
               className="mt-6 w-full rounded-lg bg-blue-800 py-3 text-lg font-semibold disabled:opacity-40"
             >
-              Final (time cap)
+              Final
             </button>
           )}
 
           <p className="mt-4 text-center text-sm text-neutral-500">
-            Auto-finalizes at {WIN_SCORE}. Overtime: just keep scoring.
+            Tap Final when the game ends — scores don&apos;t finalize automatically.
           </p>
         </>
       )}

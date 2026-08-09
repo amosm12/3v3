@@ -8,7 +8,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 async function getMatchWithNames(id: number) {
   return db.query.matches.findFirst({
     where: eq(matches.id, id),
-    with: { teamA: true, teamB: true, court: true, ref: true, group: true },
+    with: { teamA: true, teamB: true, court: true, ref: true, ref2: true, group: true },
   });
 }
 
@@ -22,6 +22,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 type PatchBody = {
   courtId?: number | null;
   refId?: number | null;
+  refId2?: number | null;
   scheduledTime?: string | null;
 };
 
@@ -37,6 +38,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     .set({
       ...(body.courtId !== undefined ? { courtId: body.courtId } : {}),
       ...(body.refId !== undefined ? { refId: body.refId } : {}),
+      ...(body.refId2 !== undefined ? { refId2: body.refId2 } : {}),
       ...(body.scheduledTime !== undefined
         ? { scheduledTime: body.scheduledTime ? new Date(body.scheduledTime) : null }
         : {}),

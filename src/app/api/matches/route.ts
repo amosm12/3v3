@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, type SQL } from "drizzle-orm";
+import { and, eq, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches } from "@/lib/db/schema";
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (status) conditions.push(eq(matches.status, status));
 
   const refId = searchParams.get("refId");
-  if (refId) conditions.push(eq(matches.refId, Number(refId)));
+  if (refId) conditions.push(or(eq(matches.refId, Number(refId)), eq(matches.refId2, Number(refId)))!);
 
   const groupId = searchParams.get("groupId");
   if (groupId) conditions.push(eq(matches.groupId, Number(groupId)));
@@ -26,6 +26,7 @@ export async function GET(request: Request) {
       teamB: true,
       court: true,
       ref: true,
+      ref2: true,
       group: true,
     },
     orderBy: (m, { asc }) => [asc(m.id)],

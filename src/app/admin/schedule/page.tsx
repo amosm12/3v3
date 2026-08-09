@@ -73,7 +73,8 @@ export default function AdminSchedulePage() {
                   <th className="px-3 py-2">Round</th>
                   <th className="px-3 py-2">Matchup</th>
                   <th className="px-3 py-2">Court</th>
-                  <th className="px-3 py-2">Ref</th>
+                  <th className="px-3 py-2">Ref 1</th>
+                  <th className="px-3 py-2">Ref 2</th>
                   <th className="px-3 py-2">Time</th>
                   <th className="px-3 py-2">Status</th>
                 </tr>
@@ -112,6 +113,22 @@ export default function AdminSchedulePage() {
                         value={m.refId ?? ""}
                         onChange={(e) =>
                           updateMatch(m.id, { refId: e.target.value ? Number(e.target.value) : null })
+                        }
+                      >
+                        <option value="">—</option>
+                        {refs.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        className="rounded border border-neutral-600 bg-neutral-800 px-2 py-1"
+                        value={m.refId2 ?? ""}
+                        onChange={(e) =>
+                          updateMatch(m.id, { refId2: e.target.value ? Number(e.target.value) : null })
                         }
                       >
                         <option value="">—</option>

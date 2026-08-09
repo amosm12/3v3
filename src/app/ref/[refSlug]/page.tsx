@@ -55,6 +55,11 @@ export default function RefDetailPage() {
                   <div className="mt-1 text-lg font-semibold">
                     {m.teamA?.name ?? "TBD"} vs {m.teamB?.name ?? "TBD"}
                   </div>
+                  {(m.ref || m.ref2) && (
+                    <div className="mt-0.5 text-xs text-neutral-500">
+                      Refs: {[m.ref?.name, m.ref2?.name].filter(Boolean).join(" & ")}
+                    </div>
+                  )}
                   {m.status !== "scheduled" && (
                     <div className="mt-1 text-2xl font-bold tabular-nums">
                       {m.scoreA} – {m.scoreB}

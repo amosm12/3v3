@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Team } from "@/lib/types";
 import { MAX_PLAYERS_PER_TEAM } from "@/lib/constants";
+import { isTeamCheckedIn, isTeamPaid } from "@/lib/teamStatus";
 
 type RosterPlayer = { id?: number; name: string; isRequired: boolean; phone: string };
 
@@ -26,6 +27,7 @@ export function TeamRosterEditor({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [revealedPhoneIndex, setRevealedPhoneIndex] = useState<number | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   function updateRosterName(index: number, value: string) {
     setRoster((r) => r.map((p, i) => (i === index ? { ...p, name: value } : p)));
@@ -76,10 +78,8 @@ export function TeamRosterEditor({
     });
     if (res.ok) {
       const updated = await res.json();
-      onTeamUpdated({
-        ...team,
-        players: team.players.map((p) => (p.id === playerId ? updated : p)),
-      });
+      const players = team.players.map((p) => (p.id === playerId ? updated : p));
+      onTeamUpdated({ ...team, players, checkedIn: isTeamCheckedIn(players), paid: isTeamPaid(players) });
     }
   }
 
@@ -90,10 +90,8 @@ export function TeamRosterEditor({
       body: JSON.stringify({ playerId, checkedIn }),
     });
     if (res.ok) {
-      onTeamUpdated({
-        ...team,
-        players: team.players.map((p) => (p.id === playerId ? { ...p, checkedIn } : p)),
-      });
+      const players = team.players.map((p) => (p.id === playerId ? { ...p, checkedIn } : p));
+      onTeamUpdated({ ...team, players, checkedIn: isTeamCheckedIn(players), paid: isTeamPaid(players) });
     }
   }
 
@@ -106,10 +104,22 @@ export function TeamRosterEditor({
     if (res.ok) {
       const updatedRequired: { id: number }[] = await res.json();
       const updatedById = new Map(updatedRequired.map((p) => [p.id, p]));
-      onTeamUpdated({
-        ...team,
-        players: team.players.map((p) => updatedById.get(p.id) as typeof p ?? p),
-      });
+      const players = team.players.map((p) => updatedById.get(p.id) as typeof p ?? p);
+      onTeamUpdated({ ...team, players, checkedIn: isTeamCheckedIn(players), paid: isTeamPaid(players) });
+    }
+  }
+
+  async function markTeamCheckedIn() {
+    const res = await fetch(`/api/teams/${team.slug}/checkin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markAllRequired: true, checkedIn: true }),
+    });
+    if (res.ok) {
+      const updatedRequired: { id: number }[] = await res.json();
+      const updatedById = new Map(updatedRequired.map((p) => [p.id, p]));
+      const players = team.players.map((p) => updatedById.get(p.id) as typeof p ?? p);
+      onTeamUpdated({ ...team, players, checkedIn: isTeamCheckedIn(players), paid: isTeamPaid(players) });
     }
   }
 
@@ -152,13 +162,36 @@ export function TeamRosterEditor({
           return (
             <div key={p.id ?? `new-${i}`} className="space-y-1 text-sm">
               <div className="flex items-center gap-2">
-                <input
-                  className="flex-1 rounded border border-neutral-600 bg-neutral-800 px-2 py-1"
-                  placeholder={p.isRequired ? "Player name" : "Sub name (optional)"}
-                  value={p.name}
-                  onChange={(e) => updateRosterName(i, e.target.value)}
-                  onFocus={() => source === "checkin" && setRevealedPhoneIndex(i)}
-                />
+                {source === "checkin" && existing && editingIndex !== i ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setRevealedPhoneIndex((cur) => (cur === i ? null : i))}
+                      className="flex-1 truncate rounded border border-transparent px-2 py-1 text-left hover:border-neutral-600 hover:bg-neutral-800"
+                    >
+                      {p.name || <span className="text-neutral-500">Unnamed</span>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingIndex(i);
+                        setRevealedPhoneIndex(null);
+                      }}
+                      className="shrink-0 text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      Edit
+                    </button>
+                  </>
+                ) : (
+                  <input
+                    className="flex-1 rounded border border-neutral-600 bg-neutral-800 px-2 py-1"
+                    placeholder={p.isRequired ? "Player name" : "Sub name (optional)"}
+                    value={p.name}
+                    autoFocus={source === "checkin" && editingIndex === i}
+                    onChange={(e) => updateRosterName(i, e.target.value)}
+                    onBlur={() => source === "checkin" && setEditingIndex(null)}
+                  />
+                )}
                 <span className="w-14 shrink-0 text-neutral-400">
                   {p.isRequired ? "Player" : "Sub"}
                 </span>
@@ -252,6 +285,16 @@ export function TeamRosterEditor({
         >
           Mark team paid ($60)
         </button>
+        {showCheckin && (
+          <button
+            type="button"
+            onClick={markTeamCheckedIn}
+            disabled={team.checkedIn}
+            className="rounded bg-green-700 px-3 py-1.5 text-sm font-medium disabled:opacity-40"
+          >
+            Mark team checked in
+          </button>
+        )}
         <button
           type="button"
           onClick={deleteTeam}

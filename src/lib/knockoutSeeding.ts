@@ -1,9 +1,9 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { matches, tournament, teams, courts as courtsTable } from "@/lib/db/schema";
+import { matches, tournament, teams, courts as courtsTable, knockoutRefPlan } from "@/lib/db/schema";
 import { computeStandingsResponse } from "@/lib/standingsResponse";
 import { buildSeedList, pairSeeds, type SeedEntry } from "@/lib/algorithms/seeding";
-import { buildKnockoutBracket, type BracketMatchSpec } from "@/lib/algorithms/bracket";
+import { buildKnockoutBracket, type BracketMatchSpec, type BracketSlotSpec } from "@/lib/algorithms/bracket";
 import { KNOCKOUT_ROUND_TIMES } from "@/lib/scheduleTimes";
 import { KNOCKOUT_SEED_LOCK_KEY } from "@/lib/advisoryLocks";
 
@@ -11,8 +11,8 @@ import { KNOCKOUT_SEED_LOCK_KEY } from "@/lib/advisoryLocks";
 // (first 5 matches, then the remaining 3) at the two R16 time slots.
 const R16_WAVE_1_SIZE = 5;
 
-function scheduleForSpec(
-  spec: BracketMatchSpec,
+export function scheduleForSpec(
+  spec: BracketSlotSpec | BracketMatchSpec,
   courtRows: { id: number }[],
 ): { scheduledTime: Date | null; courtId: number | null } {
   if (spec.key.startsWith("R16-")) {
@@ -80,6 +80,8 @@ export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
   const { pairs, unresolvedSeeds } = pairSeeds(seeds);
   const specs = buildKnockoutBracket(pairs);
   const courtRows = await db.select().from(courtsTable).orderBy(courtsTable.id);
+  const refPlanRows = await db.select().from(knockoutRefPlan);
+  const refBySlot = new Map(refPlanRows.map((p) => [p.slotKey, p]));
 
   return db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${KNOCKOUT_SEED_LOCK_KEY})`);
@@ -114,6 +116,8 @@ export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
           feedsIntoSlot: spec.feedsIntoSlot,
           scheduledTime,
           courtId,
+          refId: refBySlot.get(spec.key)?.refId ?? null,
+          refId2: refBySlot.get(spec.key)?.refId2 ?? null,
         })
         .returning();
       idByKey.set(spec.key, row.id);

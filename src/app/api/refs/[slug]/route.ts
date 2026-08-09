@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { refs, matches } from "@/lib/db/schema";
 
@@ -11,8 +11,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
   if (!ref) return NextResponse.json({ error: "Ref not found" }, { status: 404 });
 
   const assignedMatches = await db.query.matches.findMany({
-    where: eq(matches.refId, ref.id),
-    with: { teamA: true, teamB: true, court: true, group: true },
+    where: or(eq(matches.refId, ref.id), eq(matches.refId2, ref.id)),
+    with: { teamA: true, teamB: true, court: true, ref: true, ref2: true, group: true },
     orderBy: (m, { asc }) => [asc(m.scheduledTime), asc(m.id)],
   });
 

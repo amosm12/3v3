@@ -58,6 +58,7 @@ export type Match = {
   teamBId: number | null;
   courtId: number | null;
   refId: number | null;
+  refId2: number | null;
   scheduledTime: string | null;
   status: MatchStatus;
   scoreA: number;
@@ -88,6 +89,7 @@ export type MatchWithNames = Match & {
   teamB: TeamRef | null;
   court: Court | null;
   ref: Ref | null;
+  ref2: Ref | null;
   group: Group | null;
 };
 

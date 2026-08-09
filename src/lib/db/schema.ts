@@ -76,6 +76,11 @@ export const matches = pgTable(
     teamBId: integer("team_b_id").references(() => teams.id),
     courtId: integer("court_id").references(() => courts.id),
     refId: integer("ref_id").references(() => refs.id),
+    // Every match has 2 refs at the court; refId2 is the second one. Both
+    // are purely for display/assignment — the scoring lock-token flow
+    // doesn't distinguish between them, so either ref's device can Start
+    // and hold the lock.
+    refId2: integer("ref_id_2").references(() => refs.id),
     scheduledTime: timestamp("scheduled_time"),
     status: text("status").notNull().default("scheduled"), // scheduled|in_progress|final
     scoreA: integer("score_a").notNull().default(0),
@@ -89,10 +94,21 @@ export const matches = pgTable(
   (t) => [
     index("matches_status_idx").on(t.status),
     index("matches_ref_idx").on(t.refId),
+    index("matches_ref2_idx").on(t.refId2),
     index("matches_group_idx").on(t.groupId),
     index("matches_phase_idx").on(t.phase),
   ],
 );
+
+export const knockoutRefPlan = pgTable("knockout_ref_plan", {
+  id: serial("id").primaryKey(),
+  // Bracket slot key, e.g. "R16-0" .. "R16-7", "QF-0" .. "QF-3", "SF-0",
+  // "SF-1", "F-0" — set by an admin before the bracket exists so refs are
+  // pre-assigned to a slot regardless of which teams land in it.
+  slotKey: text("slot_key").notNull().unique(),
+  refId: integer("ref_id").references(() => refs.id),
+  refId2: integer("ref_id_2").references(() => refs.id),
+});
 
 export const threePointAttempts = pgTable("three_point_attempts", {
   id: serial("id").primaryKey(),
@@ -115,12 +131,11 @@ export const groupsRelations = relations(groups, ({ many }) => ({
   matches: many(matches),
 }));
 
-export const refsRelations = relations(refs, ({ one, many }) => ({
+export const refsRelations = relations(refs, ({ one }) => ({
   assignedCourt: one(courts, {
     fields: [refs.assignedCourtId],
     references: [courts.id],
   }),
-  matches: many(matches),
 }));
 
 export const courtsRelations = relations(courts, ({ many }) => ({
@@ -131,7 +146,8 @@ export const courtsRelations = relations(courts, ({ many }) => ({
 export const matchesRelations = relations(matches, ({ one }) => ({
   group: one(groups, { fields: [matches.groupId], references: [groups.id] }),
   court: one(courts, { fields: [matches.courtId], references: [courts.id] }),
-  ref: one(refs, { fields: [matches.refId], references: [refs.id] }),
+  ref: one(refs, { fields: [matches.refId], references: [refs.id], relationName: "ref" }),
+  ref2: one(refs, { fields: [matches.refId2], references: [refs.id], relationName: "ref2" }),
   teamA: one(teams, {
     fields: [matches.teamAId],
     references: [teams.id],

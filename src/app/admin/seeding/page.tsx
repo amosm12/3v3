@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import BracketTree from "@/components/BracketTree";
 import type { MatchWithNames, StandingsResponse } from "@/lib/types";
 
 type Tournament = { id: number; status: string; groupFormat: string | null };
@@ -38,7 +39,6 @@ export default function AdminSeedingPage() {
   }
 
   const alreadySeeded = bracket.length > 0;
-  const rounds = ["Round of 16", "Quarterfinal", "Semifinal", "Final"];
   const r16Matches = useMemo(() => bracket.filter((m) => m.roundLabel === "Round of 16"), [bracket]);
 
   // Derived from the loaded bracket + standings rather than the seed()
@@ -110,21 +110,7 @@ export default function AdminSeedingPage() {
               Match Overrides if needed: {collisionMatchups.join(", ")}.
             </p>
           )}
-          <div className="flex gap-6 overflow-x-auto pb-2">
-            {rounds.map((round) => (
-              <div key={round} className="min-w-[220px] shrink-0 space-y-3">
-                <h3 className="font-semibold text-neutral-300">{round}</h3>
-                {bracket
-                  .filter((m) => m.roundLabel === round)
-                  .map((m) => (
-                    <div key={m.id} className="rounded-lg border border-neutral-700 bg-neutral-900 p-3 text-sm">
-                      <div>{m.teamA?.name ?? "TBD"}</div>
-                      <div>{m.teamB?.name ?? "TBD"}</div>
-                    </div>
-                  ))}
-              </div>
-            ))}
-          </div>
+          <BracketTree matches={bracket} />
         </div>
       )}
 

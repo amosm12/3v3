@@ -9,7 +9,17 @@ export default function CheckinPage() {
   const { data: teams, loading } = usePolling<Team[]>("/api/teams");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  // Bridges the gap between an edit's own response and the next poll —
+  // cleared as soon as a fresh poll lands, since that's now the
+  // authoritative state. Without this, a stale override could shadow the
+  // real (correct) polled data indefinitely. Reset during render (not an
+  // effect) per React's "adjusting state when a prop changes" pattern.
   const [overrides, setOverrides] = useState<Record<number, Team>>({});
+  const [seenTeams, setSeenTeams] = useState(teams);
+  if (teams !== seenTeams) {
+    setSeenTeams(teams);
+    setOverrides({});
+  }
 
   const displayTeams = useMemo(
     () => (teams ?? []).map((t) => overrides[t.id] ?? t),
