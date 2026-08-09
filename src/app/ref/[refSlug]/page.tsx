@@ -55,6 +55,9 @@ export default function RefDetailPage() {
                   </div>
                   <div className="mt-0.5 text-sm font-medium text-blue-400">
                     {m.court ? m.court.label : "No court assigned"}
+                    {m.scheduledTime
+                      ? ` · ${new Date(m.scheduledTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+                      : ""}
                   </div>
                   {(m.ref || m.ref2) && (
                     <div className="mt-0.5 text-xs text-neutral-500">

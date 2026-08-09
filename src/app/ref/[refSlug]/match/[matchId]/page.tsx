@@ -72,6 +72,9 @@ export default function ScorekeepingPage() {
       </p>
       <p className="text-lg font-bold text-blue-400">
         {match.court ? match.court.label : "No court assigned"}
+        {match.scheduledTime
+          ? ` · ${new Date(match.scheduledTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+          : ""}
       </p>
 
       {banner && (
