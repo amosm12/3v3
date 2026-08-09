@@ -31,6 +31,29 @@ export default function AdminSeedingPage() {
 
   useEffect(reload, []);
 
+  async function resetBracket() {
+    if (
+      !confirm(
+        "Reset the knockout bracket? This deletes all 15 knockout matches (and any scores already entered for them) and reverts to the group stage. Group-stage matches and scores are not affected.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/reset-knockout", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error ?? "Reset failed");
+        return;
+      }
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function seed(force = false) {
     if (force && !confirm("Generate the bracket now using current standings? Any group-stage match still not final will be skipped and won't count.")) {
       return;
@@ -134,8 +157,15 @@ export default function AdminSeedingPage() {
             <Link href="/admin/matches" className="text-blue-400 hover:text-blue-300">
               Match Overrides
             </Link>
-            . To reseed from scratch, use Reset Tournament Data on the Phase &amp; Reset page.
+            . To reseed from scratch, reset the bracket below.
           </p>
+          <button
+            onClick={resetBracket}
+            disabled={busy}
+            className="mb-3 rounded border border-red-800 bg-red-950 px-4 py-2 text-sm font-medium text-red-200 disabled:opacity-40"
+          >
+            {busy ? "Resetting…" : "Reset Bracket"}
+          </button>
           {wildcardTeamNames.length > 0 && (
             <p className="mb-1 text-sm text-neutral-400">
               Wildcards (best non-top-2 records, filling the slots below 2-per-group): {wildcardTeamNames.join(", ")}.

@@ -4,6 +4,10 @@ import { useEffect, useRef } from "react";
 
 const SPEED_PX_PER_SEC = 35;
 const PAUSE_MS = 1600;
+// How long a manual scroll (wheel/touch/drag) suppresses the auto-ticker
+// before it resumes — long enough to actually read what someone scrolled
+// to without the animation immediately yanking it away.
+const USER_SCROLL_PAUSE_MS = 5000;
 // Matches the /live page's own sm breakpoint, where it switches from a
 // normal-scrolling mobile layout to the fixed-height projector layout.
 const AUTO_SCROLL_MEDIA_QUERY = "(min-width: 640px)";
@@ -13,7 +17,9 @@ const AUTO_SCROLL_MEDIA_QUERY = "(min-width: 640px)";
  * end) instead of requiring the viewer to scroll manually — built for the
  * projector-style /live page, where the page itself must never scroll but
  * a panel's content (standings, 3pt leaderboard) can be longer than the
- * space available for it. No-ops if the content already fits.
+ * space available for it. No-ops if the content already fits. Also a real,
+ * manually-scrollable box (visible scrollbar, mouse wheel, drag) — a
+ * manual scroll pauses the ticker for a bit rather than fighting it.
  *
  * Below the sm breakpoint the whole /live page scrolls normally instead
  * (see live/page.tsx), so this renders as a plain, unclipped box there —
@@ -38,16 +44,31 @@ export default function AutoScroll({
     let direction: 1 | -1 = 1;
     let lastTime = performance.now();
     let pauseUntil = 0;
+    let userPauseUntil = 0;
     // The DOM's scrollTop is an integer — each frame's step is well under
     // 1px, so reading it back as the running position would round every
     // increment down to 0 forever. Track the precise position ourselves
     // and only push it to the DOM.
     let pos = 0;
 
+    function onUserScrollIntent() {
+      userPauseUntil = performance.now() + USER_SCROLL_PAUSE_MS;
+    }
+    el.addEventListener("wheel", onUserScrollIntent, { passive: true });
+    el.addEventListener("touchstart", onUserScrollIntent, { passive: true });
+    el.addEventListener("mousedown", onUserScrollIntent);
+
     function step(now: number) {
       raf = requestAnimationFrame(step);
       const maxScroll = el!.scrollHeight - el!.clientHeight;
-      if (maxScroll <= 1 || now < pauseUntil) {
+      if (maxScroll <= 1) {
+        lastTime = now;
+        return;
+      }
+      if (now < pauseUntil || now < userPauseUntil) {
+        // Stay in sync with wherever a manual scroll left it, so resuming
+        // continues smoothly instead of jumping back to the old position.
+        pos = el!.scrollTop;
         lastTime = now;
         return;
       }
@@ -67,11 +88,16 @@ export default function AutoScroll({
     }
 
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("wheel", onUserScrollIntent);
+      el.removeEventListener("touchstart", onUserScrollIntent);
+      el.removeEventListener("mousedown", onUserScrollIntent);
+    };
   }, []);
 
   return (
-    <div ref={ref} className={`overflow-visible sm:overflow-hidden ${className ?? ""}`}>
+    <div ref={ref} className={`overflow-visible sm:overflow-y-auto ${className ?? ""}`}>
       {children}
     </div>
   );
