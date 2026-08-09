@@ -13,6 +13,7 @@ export function usePolling<T>(url: string, intervalMs: number = POLL_INTERVAL_MS
 
   useEffect(() => {
     let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     async function poll() {
       try {
@@ -37,29 +38,47 @@ export function usePolling<T>(url: string, intervalMs: number = POLL_INTERVAL_MS
     }
     pollRef.current = poll;
 
-    poll();
-    const id = setInterval(poll, intervalMs);
-
-    // Mobile Safari suspends setInterval while the tab is backgrounded
-    // (screen lock, app switch) and can restore a page from its
-    // back-forward cache without re-running this effect at all — either
-    // way, the last poll can be arbitrarily stale by the time someone
-    // looks at the screen again. Force a fresh poll the moment the page
-    // is actually visible/active again instead of waiting for the next
-    // scheduled tick.
-    function pollIfVisible() {
-      if (document.visibilityState === "visible") pollRef.current();
+    function startInterval() {
+      if (intervalId == null) intervalId = setInterval(poll, intervalMs);
     }
-    document.addEventListener("visibilitychange", pollIfVisible);
-    window.addEventListener("focus", pollIfVisible);
-    window.addEventListener("pageshow", pollIfVisible);
+    function stopInterval() {
+      if (intervalId != null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
+
+    // A backgrounded/hidden tab has nobody looking at it — stop hitting the
+    // server every `intervalMs` for no reason (this can be a real chunk of
+    // aggregate load with dozens of phones open at once). Catch up with an
+    // immediate poll the moment it's actually visible again instead of
+    // waiting for whatever's left of the old interval — this also covers
+    // mobile Safari suspending timers in the background and restoring a
+    // page from its back-forward cache without re-running this effect.
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        poll();
+        startInterval();
+      } else {
+        stopInterval();
+      }
+    }
+
+    if (document.visibilityState === "visible") {
+      poll();
+      startInterval();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
+    window.addEventListener("pageshow", handleVisibilityChange);
 
     return () => {
       cancelled = true;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", pollIfVisible);
-      window.removeEventListener("focus", pollIfVisible);
-      window.removeEventListener("pageshow", pollIfVisible);
+      stopInterval();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
+      window.removeEventListener("pageshow", handleVisibilityChange);
     };
   }, [url, intervalMs]);
 

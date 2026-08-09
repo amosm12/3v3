@@ -12,17 +12,18 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   const teamMatchFilter = or(eq(matches.teamAId, team.id), eq(matches.teamBId, team.id));
 
-  const groupMatches = await db.query.matches.findMany({
-    where: and(eq(matches.phase, "group"), teamMatchFilter),
-    with: { teamA: true, teamB: true, court: true, ref: true, group: true },
-    orderBy: (m, { asc }) => [asc(m.scheduledTime), asc(m.id)],
-  });
-
-  const knockoutMatches = await db.query.matches.findMany({
-    where: and(eq(matches.phase, "knockout"), teamMatchFilter),
-    with: { teamA: true, teamB: true, court: true, ref: true, group: true },
-    orderBy: (m, { asc }) => [asc(m.id)],
-  });
+  const [groupMatches, knockoutMatches] = await Promise.all([
+    db.query.matches.findMany({
+      where: and(eq(matches.phase, "group"), teamMatchFilter),
+      with: { teamA: true, teamB: true, court: true, ref: true, group: true },
+      orderBy: (m, { asc }) => [asc(m.scheduledTime), asc(m.id)],
+    }),
+    db.query.matches.findMany({
+      where: and(eq(matches.phase, "knockout"), teamMatchFilter),
+      with: { teamA: true, teamB: true, court: true, ref: true, group: true },
+      orderBy: (m, { asc }) => [asc(m.id)],
+    }),
+  ]);
 
   let eliminated = false;
   let champion = false;

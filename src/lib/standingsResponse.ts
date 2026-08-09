@@ -15,25 +15,30 @@ function hasBothTeams(m: FinalRow): m is FinalRow & { teamAId: number; teamBId: 
 export async function computeStandingsResponse(
   tour: { groupFormat: string | null } | null,
 ): Promise<StandingsResponse> {
-  const allTeams = await db.select().from(teams);
-  const teamById = new Map(allTeams.map((t) => [t.id, t]));
-
-  function enrich(rows: ReturnType<typeof computeStandings>) {
-    return rows.map((r) => ({
-      ...r,
-      teamName: teamById.get(r.teamId)?.name ?? `Team #${r.teamId}`,
-      teamSlug: teamById.get(r.teamId)?.slug ?? null,
-    }));
+  // Called on every /live poll from every viewer — skip all queries
+  // entirely before a format has even been chosen, rather than always
+  // pulling the full teams table just to hit the empty-result fallback.
+  if (!tour?.groupFormat) {
+    return { format: null, groups: [], global: null };
   }
 
-  if (tour?.groupFormat === "groups_of_4") {
-    const allGroups = await db.select().from(groups).orderBy(groups.label);
-    const finalGroupMatches = (
-      await db
+  if (tour.groupFormat === "groups_of_4") {
+    const [allTeams, allGroups, finalGroupMatchesRaw] = await Promise.all([
+      db.select().from(teams),
+      db.select().from(groups).orderBy(groups.label),
+      db
         .select()
         .from(matches)
-        .where(and(eq(matches.phase, "group"), eq(matches.status, "final")))
-    ).filter(hasBothTeams);
+        .where(and(eq(matches.phase, "group"), eq(matches.status, "final"))),
+    ]);
+    const teamById = new Map(allTeams.map((t) => [t.id, t]));
+    const enrich = (rows: ReturnType<typeof computeStandings>) =>
+      rows.map((r) => ({
+        ...r,
+        teamName: teamById.get(r.teamId)?.name ?? `Team #${r.teamId}`,
+        teamSlug: teamById.get(r.teamId)?.slug ?? null,
+      }));
+    const finalGroupMatches = finalGroupMatchesRaw.filter(hasBothTeams);
 
     const result = allGroups.map((g) => {
       const teamIds = allTeams.filter((t) => t.groupId === g.id).map((t) => t.id);
@@ -47,14 +52,24 @@ export async function computeStandingsResponse(
     return { format: "groups_of_4", groups: result, global: null };
   }
 
-  if (tour?.groupFormat === "single_bracket_random_3") {
-    const finalMatches = (
-      await db
+  if (tour.groupFormat === "single_bracket_random_3") {
+    const [allTeams, finalMatchesRaw] = await Promise.all([
+      db.select().from(teams),
+      db
         .select()
         .from(matches)
-        .where(and(eq(matches.phase, "group"), eq(matches.status, "final")))
-    ).filter(hasBothTeams);
+        .where(and(eq(matches.phase, "group"), eq(matches.status, "final"))),
+    ]);
+    const teamById = new Map(allTeams.map((t) => [t.id, t]));
+    const enrich = (rows: ReturnType<typeof computeStandings>) =>
+      rows.map((r) => ({
+        ...r,
+        teamName: teamById.get(r.teamId)?.name ?? `Team #${r.teamId}`,
+        teamSlug: teamById.get(r.teamId)?.slug ?? null,
+      }));
+    const finalMatches = finalMatchesRaw.filter(hasBothTeams);
     const teamIds = allTeams.map((t) => t.id);
+
     return {
       format: "single_bracket_random_3",
       groups: [],

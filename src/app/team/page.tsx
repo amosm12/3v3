@@ -2,10 +2,11 @@
 
 import { usePolling } from "@/components/usePolling";
 import { SearchableList } from "@/components/SearchableList";
-import type { Team } from "@/lib/types";
+
+type TeamName = { id: number; slug: string; name: string };
 
 export default function TeamListPage() {
-  const { data: teams, loading } = usePolling<Team[]>("/api/teams", 5000);
+  const { data: teams, loading } = usePolling<TeamName[]>("/api/teams?fields=names", 5000);
 
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-neutral-950 px-4 py-6 text-neutral-100">

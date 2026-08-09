@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
-import UpdateBanner from "@/components/UpdateBanner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +12,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en">
       <body className="bg-neutral-950 text-neutral-100">
         {children}
-        <UpdateBanner />
         <Analytics />
       </body>
     </html>

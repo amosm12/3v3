@@ -5,7 +5,22 @@ import { generateSlug } from "@/lib/slug";
 import { isTeamCheckedIn, isTeamPaid } from "@/lib/teamStatus";
 import { REQUIRED_PLAYERS_PER_TEAM, MAX_PLAYERS_PER_TEAM } from "@/lib/constants";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+
+  // The public /team search page just needs names to search against — not
+  // every team's full roster, payment status, and phone numbers. That page
+  // is plausibly the most-viewed one in the whole app (every player and
+  // spectator browses it), so skip the roster join and the fields that
+  // shouldn't be public anyway when only names are being asked for.
+  if (searchParams.get("fields") === "names") {
+    const rows = await db
+      .select({ id: teams.id, slug: teams.slug, name: teams.name })
+      .from(teams)
+      .orderBy(teams.name);
+    return NextResponse.json(rows);
+  }
+
   const allTeams = await db.query.teams.findMany({
     with: { players: true },
     orderBy: (t, { asc }) => [asc(t.name)],
