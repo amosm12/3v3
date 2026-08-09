@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePolling } from "@/components/usePolling";
 import BracketTree from "@/components/BracketTree";
 import AutoScroll from "@/components/AutoScroll";
@@ -9,8 +10,11 @@ import type { LiveSnapshot } from "@/lib/types";
 const MEDALS = ["🥇", "🥈", "🥉"];
 const EMPTY_GROUP_MAP = new Map<number, number | null>();
 
+type KnockoutView = "bracket" | "standings";
+
 export default function LivePage() {
   const { data, error, loading } = usePolling<LiveSnapshot>("/api/live/snapshot");
+  const [knockoutView, setKnockoutView] = useState<KnockoutView>("bracket");
 
   const inKnockout = data?.tournament?.status === "knockout" || data?.tournament?.status === "complete";
   const bracket = data?.bracket && data.bracket.length > 0 ? data.bracket : null;
@@ -37,7 +41,13 @@ export default function LivePage() {
       {data && (
         <div className="grid flex-1 grid-cols-1 gap-4 sm:min-h-0 sm:grid-cols-[2fr_1fr]">
           {inKnockout && bracket ? (
-            <BracketSection matches={bracket} />
+            <KnockoutSection
+              matches={bracket}
+              standings={data.standings}
+              advancingTeamIds={advancingTeamIds}
+              view={knockoutView}
+              onViewChange={setKnockoutView}
+            />
           ) : (
             <StandingsSection standings={data.standings} advancingTeamIds={advancingTeamIds} />
           )}
@@ -67,7 +77,7 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
   );
 }
 
-function StandingsSection({
+function StandingsBody({
   standings,
   advancingTeamIds,
 }: {
@@ -75,25 +85,32 @@ function StandingsSection({
   advancingTeamIds: Set<number>;
 }) {
   if (!standings.format) {
-    return (
-      <Panel className="flex h-full min-h-0 min-w-0 flex-col">
-        <SectionTitle accent="bg-amber-500">Standings</SectionTitle>
-        <p className="text-xl text-neutral-500">Not generated yet.</p>
-      </Panel>
-    );
+    return <p className="text-xl text-neutral-500">Not generated yet.</p>;
   }
+  return (
+    <AutoScroll className="min-h-0 flex-1 space-y-6 pr-1">
+      {standings.global && <StandingsTable rows={standings.global} advancingTeamIds={advancingTeamIds} />}
+      {standings.groups.map((g) => (
+        <div key={g.groupLabel}>
+          <h3 className="mb-1 text-lg font-semibold text-neutral-700">Group {g.groupLabel}</h3>
+          <StandingsTable rows={g.standings} advancingTeamIds={advancingTeamIds} />
+        </div>
+      ))}
+    </AutoScroll>
+  );
+}
+
+function StandingsSection({
+  standings,
+  advancingTeamIds,
+}: {
+  standings: LiveSnapshot["standings"];
+  advancingTeamIds: Set<number>;
+}) {
   return (
     <Panel className="flex h-full min-h-0 min-w-0 flex-col">
       <SectionTitle accent="bg-amber-500">Standings</SectionTitle>
-      <AutoScroll className="min-h-0 flex-1 space-y-6 pr-1">
-        {standings.global && <StandingsTable rows={standings.global} advancingTeamIds={advancingTeamIds} />}
-        {standings.groups.map((g) => (
-          <div key={g.groupLabel}>
-            <h3 className="mb-1 text-lg font-semibold text-neutral-700">Group {g.groupLabel}</h3>
-            <StandingsTable rows={g.standings} advancingTeamIds={advancingTeamIds} />
-          </div>
-        ))}
-      </AutoScroll>
+      <StandingsBody standings={standings} advancingTeamIds={advancingTeamIds} />
     </Panel>
   );
 }
@@ -183,14 +200,60 @@ function ThreePointSection({ attempts }: { attempts: LiveSnapshot["threePoint"] 
   );
 }
 
-function BracketSection({ matches }: { matches: LiveSnapshot["bracket"] }) {
+function TabButton({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xl font-bold uppercase tracking-wide transition-colors ${
+        active ? "bg-amber-500/15 text-neutral-800" : "text-neutral-400 hover:text-neutral-600"
+      }`}
+    >
+      <span className={`h-5 w-1.5 rounded-full ${active ? "bg-amber-500" : "bg-neutral-300"}`} />
+      {children}
+    </button>
+  );
+}
+
+function KnockoutSection({
+  matches,
+  standings,
+  advancingTeamIds,
+  view,
+  onViewChange,
+}: {
+  matches: LiveSnapshot["bracket"];
+  standings: LiveSnapshot["standings"];
+  advancingTeamIds: Set<number>;
+  view: KnockoutView;
+  onViewChange: (view: KnockoutView) => void;
+}) {
   if (!matches) return null;
   return (
     <Panel className="flex h-full min-h-0 min-w-0 flex-col">
-      <SectionTitle accent="bg-amber-500">Bracket</SectionTitle>
-      <div className="min-h-105 flex-1 sm:min-h-0">
-        <BracketTree matches={matches} light />
+      <div className="mb-2 flex shrink-0 items-center gap-1">
+        <TabButton active={view === "bracket"} onClick={() => onViewChange("bracket")}>
+          Bracket
+        </TabButton>
+        <TabButton active={view === "standings"} onClick={() => onViewChange("standings")}>
+          Standings
+        </TabButton>
       </div>
+      {view === "bracket" ? (
+        <div className="min-h-105 flex-1 sm:min-h-0">
+          <BracketTree matches={matches} light />
+        </div>
+      ) : (
+        <StandingsBody standings={standings} advancingTeamIds={advancingTeamIds} />
+      )}
     </Panel>
   );
 }
