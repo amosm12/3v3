@@ -50,7 +50,7 @@ function buildColumns(matches: MatchWithNames[]): MatchWithNames[][] {
   return columns;
 }
 
-export default function BracketTree({ matches }: { matches: MatchWithNames[] }) {
+export default function BracketTree({ matches, light = false }: { matches: MatchWithNames[]; light?: boolean }) {
   const columns = useMemo(() => buildColumns(matches), [matches]);
   const outerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -143,7 +143,9 @@ export default function BracketTree({ matches }: { matches: MatchWithNames[] }) 
           {ROUND_ORDER.map((label) => (
             <h3
               key={label}
-              className="shrink-0 border-b-2 border-amber-500/40 pb-1 text-xl font-semibold text-neutral-300"
+              className={`shrink-0 border-b-2 pb-1 text-xl font-semibold ${
+                light ? "border-amber-500/60 text-neutral-700" : "border-amber-500/40 text-neutral-300"
+              }`}
               style={{ width: COLUMN_WIDTH }}
             >
               {label}
@@ -153,7 +155,7 @@ export default function BracketTree({ matches }: { matches: MatchWithNames[] }) 
         <div ref={containerRef} className="relative mt-3 flex" style={{ gap: COLUMN_GAP, height: bodyHeight }}>
           <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
             {paths.map((d, i) => (
-              <path key={i} d={d} fill="none" stroke="#525252" strokeWidth={2} />
+              <path key={i} d={d} fill="none" stroke={light ? "#a3a3a3" : "#525252"} strokeWidth={2} />
             ))}
           </svg>
           {columns.map((col, i) => (
@@ -169,11 +171,19 @@ export default function BracketTree({ matches }: { matches: MatchWithNames[] }) 
                     if (el) matchRefs.current.set(m.id, el);
                     else matchRefs.current.delete(m.id);
                   }}
-                  className="relative z-10 rounded-lg border border-neutral-700 bg-linear-to-br from-neutral-900 to-neutral-950 p-3 shadow-md shadow-black/40"
+                  className={`relative z-10 rounded-lg border p-3 shadow-md ${
+                    light
+                      ? "border-neutral-200 bg-linear-to-br from-white to-neutral-50 shadow-black/10"
+                      : "border-neutral-700 bg-linear-to-br from-neutral-900 to-neutral-950 shadow-black/40"
+                  }`}
                 >
                   <div
                     className={`flex justify-between text-lg ${
-                      m.winnerId != null && m.winnerId === m.teamAId ? "font-bold text-amber-400" : ""
+                      m.winnerId != null && m.winnerId === m.teamAId
+                        ? light
+                          ? "font-bold text-amber-600"
+                          : "font-bold text-amber-400"
+                        : ""
                     }`}
                   >
                     <span className="truncate">
@@ -184,7 +194,11 @@ export default function BracketTree({ matches }: { matches: MatchWithNames[] }) 
                   </div>
                   <div
                     className={`flex justify-between text-lg ${
-                      m.winnerId != null && m.winnerId === m.teamBId ? "font-bold text-amber-400" : ""
+                      m.winnerId != null && m.winnerId === m.teamBId
+                        ? light
+                          ? "font-bold text-amber-600"
+                          : "font-bold text-amber-400"
+                        : ""
                     }`}
                   >
                     <span className="truncate">
