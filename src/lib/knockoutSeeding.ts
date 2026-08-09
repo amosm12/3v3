@@ -8,8 +8,8 @@ import { KNOCKOUT_ROUND_TIMES } from "@/lib/scheduleTimes";
 import { KNOCKOUT_SEED_LOCK_KEY } from "@/lib/advisoryLocks";
 
 // Round of 16 has 8 matches but only 5 courts, so it runs in two waves
-// (first 5 matches, then the remaining 3) at the two R16 time slots.
-const R16_WAVE_1_SIZE = 5;
+// (4 matches, then the remaining 4) at the two R16 time slots.
+const R16_WAVE_1_SIZE = 4;
 
 export function scheduleForSpec(
   spec: BracketSlotSpec | BracketMatchSpec,
