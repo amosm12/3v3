@@ -1,11 +1,12 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { matches, tournament, teams, courts as courtsTable, knockoutRefPlan } from "@/lib/db/schema";
+import { matches, tournament, teams, courts as courtsTable } from "@/lib/db/schema";
 import { computeStandingsResponse } from "@/lib/standingsResponse";
 import { buildSeedList, pairSeeds, type SeedEntry } from "@/lib/algorithms/seeding";
 import { buildKnockoutBracket, type BracketMatchSpec, type BracketSlotSpec } from "@/lib/algorithms/bracket";
 import { KNOCKOUT_ROUND_TIMES } from "@/lib/scheduleTimes";
 import { KNOCKOUT_SEED_LOCK_KEY } from "@/lib/advisoryLocks";
+import { getCourtRefsMap } from "@/lib/courtRefs";
 
 // Round of 16 has 8 matches but only 5 courts, so it runs in two waves
 // (4 matches, then the remaining 4) at the two R16 time slots.
@@ -80,8 +81,7 @@ export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
   const { pairs, unresolvedSeeds } = pairSeeds(seeds);
   const specs = buildKnockoutBracket(pairs);
   const courtRows = await db.select().from(courtsTable).orderBy(courtsTable.id);
-  const refPlanRows = await db.select().from(knockoutRefPlan);
-  const refBySlot = new Map(refPlanRows.map((p) => [p.slotKey, p]));
+  const courtRefs = await getCourtRefsMap(courtRows.map((c) => c.id));
 
   return db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${KNOCKOUT_SEED_LOCK_KEY})`);
@@ -104,6 +104,7 @@ export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
     for (const spec of specs) {
       const feedsIntoMatchId = spec.feedsIntoKey ? idByKey.get(spec.feedsIntoKey)! : null;
       const { scheduledTime, courtId } = scheduleForSpec(spec, courtRows);
+      const { refId, refId2 } = (courtId != null && courtRefs.get(courtId)) || { refId: null, refId2: null };
       const [row] = await tx
         .insert(matches)
         .values({
@@ -116,8 +117,8 @@ export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
           feedsIntoSlot: spec.feedsIntoSlot,
           scheduledTime,
           courtId,
-          refId: refBySlot.get(spec.key)?.refId ?? null,
-          refId2: refBySlot.get(spec.key)?.refId2 ?? null,
+          refId,
+          refId2,
         })
         .returning();
       idByKey.set(spec.key, row.id);

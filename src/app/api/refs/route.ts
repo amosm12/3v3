@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { refs } from "@/lib/db/schema";
 import { generateSlug } from "@/lib/slug";
+import { syncScheduledMatchRefsForCourt } from "@/lib/courtRefs";
 
 export async function GET() {
   const all = await db.query.refs.findMany({
@@ -23,5 +24,10 @@ export async function POST(request: Request) {
       assignedCourtId: body.assignedCourtId ?? null,
     })
     .returning();
+
+  if (row.assignedCourtId != null) {
+    await syncScheduledMatchRefsForCourt(row.assignedCourtId);
+  }
+
   return NextResponse.json(row, { status: 201 });
 }

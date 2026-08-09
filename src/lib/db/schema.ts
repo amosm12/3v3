@@ -100,16 +100,6 @@ export const matches = pgTable(
   ],
 );
 
-export const knockoutRefPlan = pgTable("knockout_ref_plan", {
-  id: serial("id").primaryKey(),
-  // Bracket slot key, e.g. "R16-0" .. "R16-7", "QF-0" .. "QF-3", "SF-0",
-  // "SF-1", "F-0" — set by an admin before the bracket exists so refs are
-  // pre-assigned to a slot regardless of which teams land in it.
-  slotKey: text("slot_key").notNull().unique(),
-  refId: integer("ref_id").references(() => refs.id),
-  refId2: integer("ref_id_2").references(() => refs.id),
-});
-
 export const threePointAttempts = pgTable("three_point_attempts", {
   id: serial("id").primaryKey(),
   entrantName: text("entrant_name").notNull(),

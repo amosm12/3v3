@@ -6,6 +6,7 @@ import { generateRandomPairing } from "@/lib/algorithms/randomPairing";
 import { assignMatchSchedule } from "@/lib/algorithms/scheduleAssignment";
 import { GROUP_STAGE_START_TIMES } from "@/lib/scheduleTimes";
 import { GROUP_GENERATION_LOCK_KEY } from "@/lib/advisoryLocks";
+import { getCourtRefsMap } from "@/lib/courtRefs";
 
 export async function POST() {
   const existingGroupMatches = await db.query.matches.findFirst({
@@ -31,6 +32,7 @@ export async function POST() {
   }
 
   const courtRows = await db.select().from(courtsTable).orderBy(courtsTable.id);
+  const courtRefs = await getCourtRefsMap(courtRows.map((c) => c.id));
   const bonusByPair = new Map(generated.matches.map((m) => [`${m.teamAId}-${m.teamBId}`, m.bonusGame]));
   const { scheduled, unscheduled } = assignMatchSchedule(
     generated.matches.map((m) => ({ teamAId: m.teamAId, teamBId: m.teamBId })),
@@ -49,16 +51,22 @@ export async function POST() {
       return { alreadyExists: true as const };
     }
 
-    const scheduledRows = scheduled.map((s) => ({
-      phase: "group" as const,
-      roundLabel: `Group Stage ${s.roundIndex + 1}`,
-      teamAId: s.teamAId,
-      teamBId: s.teamBId,
-      bonusGame: bonusByPair.get(`${s.teamAId}-${s.teamBId}`) ?? false,
-      status: "scheduled" as const,
-      scheduledTime: GROUP_STAGE_START_TIMES[s.roundIndex],
-      courtId: courtRows[s.courtIndex]?.id ?? null,
-    }));
+    const scheduledRows = scheduled.map((s) => {
+      const courtId = courtRows[s.courtIndex]?.id ?? null;
+      const { refId, refId2 } = (courtId != null && courtRefs.get(courtId)) || { refId: null, refId2: null };
+      return {
+        phase: "group" as const,
+        roundLabel: `Group Stage ${s.roundIndex + 1}`,
+        teamAId: s.teamAId,
+        teamBId: s.teamBId,
+        bonusGame: bonusByPair.get(`${s.teamAId}-${s.teamBId}`) ?? false,
+        status: "scheduled" as const,
+        scheduledTime: GROUP_STAGE_START_TIMES[s.roundIndex],
+        courtId,
+        refId,
+        refId2,
+      };
+    });
     const unscheduledRows = unscheduled.map((u) => ({
       phase: "group" as const,
       roundLabel: "Unscheduled — assign manually",
