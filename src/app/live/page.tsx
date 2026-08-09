@@ -23,7 +23,7 @@ export default function LivePage() {
 
   return (
     <div
-      className="flex h-screen flex-col overflow-hidden px-4 py-4 text-white sm:px-8 sm:py-6"
+      className="flex min-h-screen flex-col overflow-y-auto px-4 py-4 text-white sm:h-screen sm:overflow-hidden sm:px-8 sm:py-6"
       style={{ background: "radial-gradient(ellipse at top, #17120a 0%, #000 60%)" }}
     >
       {error && (
@@ -35,7 +35,7 @@ export default function LivePage() {
       {loading && !data && <p className="text-2xl text-neutral-400">Loading…</p>}
 
       {data && (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
+        <div className="grid flex-1 grid-cols-1 gap-4 sm:min-h-0 sm:grid-cols-[2fr_1fr]">
           {inKnockout && bracket ? (
             <BracketSection matches={bracket} />
           ) : (
@@ -188,7 +188,7 @@ function BracketSection({ matches }: { matches: LiveSnapshot["bracket"] }) {
   return (
     <Panel className="flex h-full min-h-0 min-w-0 flex-col">
       <SectionTitle accent="bg-amber-500">Bracket</SectionTitle>
-      <div className="min-h-0 flex-1">
+      <div className="min-h-105 flex-1 sm:min-h-0">
         <BracketTree matches={matches} />
       </div>
     </Panel>

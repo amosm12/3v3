@@ -12,6 +12,11 @@ const COLUMN_WIDTH = 224; // px, matches `w-56`
 const COLUMN_GAP = 64; // px, matches `gap-16`
 const HEADER_BLOCK_HEIGHT = 40; // round-label row height (28px text-xl line + 12px mt-3 gap)
 const MAX_SCALE = 1.8;
+// Below this, team names become illegible on a phone — better to let the
+// user scroll/pan the bracket at a readable size than shrink it to fit a
+// narrow viewport. Matches the /live page's sm breakpoint.
+const MIN_SCALE_MOBILE = 0.75;
+const MOBILE_MEDIA_QUERY = "(min-width: 640px)";
 
 /**
  * Orders matches into [R16, QF, SF, F] columns, left-to-right within each
@@ -68,7 +73,9 @@ export default function BracketTree({ matches }: { matches: MatchWithNames[] }) 
       const availH = outer.clientHeight;
       if (availW <= 0 || availH <= 0) return;
       const fit = Math.min(availW / naturalWidth, availH / naturalHeight, MAX_SCALE);
-      setScale(fit > 0 && Number.isFinite(fit) ? fit : 1);
+      const isMobile = !window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+      const clamped = isMobile ? Math.max(fit, MIN_SCALE_MOBILE) : fit;
+      setScale(clamped > 0 && Number.isFinite(clamped) ? clamped : 1);
     }
 
     recomputeScale();
@@ -120,7 +127,10 @@ export default function BracketTree({ matches }: { matches: MatchWithNames[] }) 
   }, [matches, columns, scale]);
 
   return (
-    <div ref={outerRef} className="flex h-full w-full items-center justify-center overflow-hidden">
+    <div
+      ref={outerRef}
+      className="flex h-full w-full items-start justify-start overflow-auto sm:items-center sm:justify-center sm:overflow-hidden"
+    >
       <div
         style={{
           width: naturalWidth,

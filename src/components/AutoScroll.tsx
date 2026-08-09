@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 
 const SPEED_PX_PER_SEC = 35;
 const PAUSE_MS = 1600;
+// Matches the /live page's own sm breakpoint, where it switches from a
+// normal-scrolling mobile layout to the fixed-height projector layout.
+const AUTO_SCROLL_MEDIA_QUERY = "(min-width: 640px)";
 
 /**
  * A box that slowly auto-scrolls its content up and down (pausing at each
@@ -11,6 +14,11 @@ const PAUSE_MS = 1600;
  * projector-style /live page, where the page itself must never scroll but
  * a panel's content (standings, 3pt leaderboard) can be longer than the
  * space available for it. No-ops if the content already fits.
+ *
+ * Below the sm breakpoint the whole /live page scrolls normally instead
+ * (see live/page.tsx), so this renders as a plain, unclipped box there —
+ * fighting a user's manual touch-scroll with a competing JS animation
+ * would make mobile unusable.
  */
 export default function AutoScroll({
   children,
@@ -24,6 +32,7 @@ export default function AutoScroll({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (!window.matchMedia(AUTO_SCROLL_MEDIA_QUERY).matches) return;
 
     let raf: number;
     let direction: 1 | -1 = 1;
@@ -62,7 +71,7 @@ export default function AutoScroll({
   }, []);
 
   return (
-    <div ref={ref} className={`overflow-hidden ${className ?? ""}`}>
+    <div ref={ref} className={`overflow-visible sm:overflow-hidden ${className ?? ""}`}>
       {children}
     </div>
   );
