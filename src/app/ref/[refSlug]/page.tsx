@@ -17,6 +17,19 @@ const STATUS_STYLE: Record<string, string> = {
   final: "bg-green-800 text-green-100",
 };
 
+function TeamCheckinLabel({ team }: { team: { name: string; checkedIn?: boolean } | null }) {
+  if (!team) return <span>TBD</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {team.name}
+      <span
+        className={`h-2 w-2 shrink-0 rounded-full ${team.checkedIn ? "bg-green-500" : "bg-red-500"}`}
+        title={team.checkedIn ? "Checked in" : "Not checked in"}
+      />
+    </span>
+  );
+}
+
 export default function RefDetailPage() {
   const { refSlug } = useParams<{ refSlug: string }>();
   const { data: ref, loading, error } = usePolling<RefDetail>(`/api/refs/${refSlug}`);
@@ -50,8 +63,10 @@ export default function RefDetailPage() {
                       {STATUS_LABEL[m.status]}
                     </span>
                   </div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {m.teamA?.name ?? "TBD"} vs {m.teamB?.name ?? "TBD"}
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-lg font-semibold">
+                    <TeamCheckinLabel team={m.teamA} />
+                    <span className="text-neutral-500">vs</span>
+                    <TeamCheckinLabel team={m.teamB} />
                   </div>
                   <div className="mt-0.5 text-sm font-medium text-blue-400">
                     {m.court ? m.court.label : "No court assigned"}

@@ -4,14 +4,24 @@ import { db } from "@/lib/db";
 import { matches } from "@/lib/db/schema";
 import { getCourtRefs } from "@/lib/courtRefs";
 import { deriveRoundLabelFromTime } from "@/lib/scheduleTimes";
+import { teamRefWithCheckedIn } from "@/lib/teamStatus";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 async function getMatchWithNames(id: number) {
-  return db.query.matches.findFirst({
+  const match = await db.query.matches.findFirst({
     where: eq(matches.id, id),
-    with: { teamA: true, teamB: true, court: true, ref: true, ref2: true, group: true },
+    with: {
+      teamA: { with: { players: true } },
+      teamB: { with: { players: true } },
+      court: true,
+      ref: true,
+      ref2: true,
+      group: true,
+    },
   });
+  if (!match) return match;
+  return { ...match, teamA: teamRefWithCheckedIn(match.teamA), teamB: teamRefWithCheckedIn(match.teamB) };
 }
 
 export async function GET(_request: Request, { params }: RouteParams) {

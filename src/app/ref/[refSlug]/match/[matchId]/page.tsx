@@ -128,6 +128,7 @@ export default function ScorekeepingPage() {
       <div className="mt-6 grid grid-cols-2 gap-4">
         <TeamScorePanel
           name={match.teamA?.name ?? "Team A"}
+          checkedIn={match.teamA?.checkedIn}
           score={match.scoreA}
           isWinner={isFinal && match.winnerId === match.teamAId}
           readOnly={isFinal}
@@ -136,6 +137,7 @@ export default function ScorekeepingPage() {
         />
         <TeamScorePanel
           name={match.teamB?.name ?? "Team B"}
+          checkedIn={match.teamB?.checkedIn}
           score={match.scoreB}
           isWinner={isFinal && match.winnerId === match.teamBId}
           readOnly={isFinal}
@@ -164,6 +166,7 @@ export default function ScorekeepingPage() {
 
 function TeamScorePanel({
   name,
+  checkedIn,
   score,
   isWinner,
   readOnly,
@@ -171,6 +174,7 @@ function TeamScorePanel({
   onChange,
 }: {
   name: string;
+  checkedIn?: boolean;
   score: number;
   isWinner: boolean;
   readOnly: boolean;
@@ -184,6 +188,9 @@ function TeamScorePanel({
       }`}
     >
       <div className="truncate text-lg font-semibold">{name}</div>
+      <div className={`text-xs font-medium ${checkedIn ? "text-green-400" : "text-red-400"}`}>
+        {checkedIn ? "✓ Checked in" : "✗ Not checked in"}
+      </div>
       {readOnly ? (
         <div className="my-3 text-6xl font-black tabular-nums">{score}</div>
       ) : (

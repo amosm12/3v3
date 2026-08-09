@@ -3,6 +3,7 @@ import { eq, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { refs, matches } from "@/lib/db/schema";
 import { syncScheduledMatchRefsForCourt } from "@/lib/courtRefs";
+import { teamRefWithCheckedIn } from "@/lib/teamStatus";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -11,11 +12,23 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const ref = await db.query.refs.findFirst({ where: eq(refs.slug, slug) });
   if (!ref) return NextResponse.json({ error: "Ref not found" }, { status: 404 });
 
-  const assignedMatches = await db.query.matches.findMany({
+  const assignedMatchesRaw = await db.query.matches.findMany({
     where: or(eq(matches.refId, ref.id), eq(matches.refId2, ref.id)),
-    with: { teamA: true, teamB: true, court: true, ref: true, ref2: true, group: true },
+    with: {
+      teamA: { with: { players: true } },
+      teamB: { with: { players: true } },
+      court: true,
+      ref: true,
+      ref2: true,
+      group: true,
+    },
     orderBy: (m, { asc }) => [asc(m.scheduledTime), asc(m.id)],
   });
+  const assignedMatches = assignedMatchesRaw.map((m) => ({
+    ...m,
+    teamA: teamRefWithCheckedIn(m.teamA),
+    teamB: teamRefWithCheckedIn(m.teamB),
+  }));
 
   return NextResponse.json({ ...ref, matches: assignedMatches });
 }

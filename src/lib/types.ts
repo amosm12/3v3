@@ -81,6 +81,7 @@ export type TeamRef = {
   slug: string;
   name: string;
   groupId: number | null;
+  checkedIn?: boolean; // populated on ref-facing match queries only
 };
 
 export type MatchWithNames = Match & {
