@@ -70,6 +70,9 @@ export default function ScorekeepingPage() {
         {match.group?.label ? `Group ${match.group.label} · ` : ""}
         {match.roundLabel}
       </p>
+      <p className="text-lg font-bold text-blue-400">
+        {match.court ? match.court.label : "No court assigned"}
+      </p>
 
       {banner && (
         <div className="mt-3 rounded border border-amber-700 bg-amber-950 px-3 py-2 text-amber-200">
