@@ -31,11 +31,18 @@ export default function AdminSeedingPage() {
 
   useEffect(reload, []);
 
-  async function seed() {
+  async function seed(force = false) {
+    if (force && !confirm("Generate the bracket now using current standings? Any group-stage match still not final will be skipped and won't count.")) {
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/seed-knockout", { method: "POST" });
+      const res = await fetch("/api/admin/seed-knockout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
       const body = await res.json();
       if (!res.ok) {
         setError(body.error ?? "Seeding failed");
@@ -88,18 +95,28 @@ export default function AdminSeedingPage() {
       )}
 
       {!alreadySeeded && groupStageStarted && !groupStageReady && (
-        <p className="text-sm text-neutral-500">
-          Waiting for the group stage to finish
-          {pendingGroupMatches != null && ` — ${pendingGroupMatches.length} match(es) not final yet`}.
-          The button to generate the bracket will appear here as soon as the last one is submitted.
-        </p>
+        <>
+          <p className="text-sm text-neutral-500">
+            Waiting for the group stage to finish
+            {pendingGroupMatches != null && ` — ${pendingGroupMatches.length} match(es) not final yet`}.
+            The button to generate the bracket will appear here on its own as soon as the last one is
+            submitted — or generate it now anyway using current standings.
+          </p>
+          <button
+            onClick={() => seed(true)}
+            disabled={busy}
+            className="rounded border border-amber-700 bg-amber-950 px-4 py-2 text-sm font-medium text-amber-200 disabled:opacity-40"
+          >
+            {busy ? "Seeding…" : "Generate Bracket Now (skip remaining group games)"}
+          </button>
+        </>
       )}
 
       {!alreadySeeded && groupStageReady && (
         <>
           <p className="text-sm text-green-400">Group stage complete — ready to seed the bracket.</p>
           <button
-            onClick={seed}
+            onClick={() => seed(false)}
             disabled={busy}
             className="rounded bg-blue-700 px-4 py-2 text-sm font-medium disabled:opacity-40"
           >

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { attemptKnockoutSeeding } from "@/lib/knockoutSeeding";
 
-export async function POST() {
-  const result = await attemptKnockoutSeeding();
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => ({}));
+  const force = (body as { force?: boolean } | null)?.force === true;
+  const result = await attemptKnockoutSeeding({ force });
 
   if (!result.seeded) {
     switch (result.reason) {

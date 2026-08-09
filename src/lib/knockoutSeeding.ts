@@ -50,8 +50,17 @@ export type SeedAttemptResult =
  * pre-checks run unlocked (this gets called on every group-match finalize,
  * so it must stay fast for the common "not done yet" case); only the actual
  * insert is guarded by an advisory lock + re-check.
+ *
+ * `force: true` skips the group-stage-complete check, seeding off whatever
+ * standings exist right now — an admin escape hatch for a live event running
+ * behind schedule. Standings already only count `status: 'final'` matches
+ * (see standings.ts), so teams with fewer games played simply rank on win%
+ * of what they've played, same as the existing bonus-game handling; any
+ * group match still `scheduled` at that point is just left behind, unused.
  */
-export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
+export async function attemptKnockoutSeeding(options?: { force?: boolean }): Promise<SeedAttemptResult> {
+  const force = options?.force ?? false;
+
   const [tour] = await db.select().from(tournament).limit(1);
   if (!tour?.groupFormat) {
     return { seeded: false, reason: "NO_GROUP_FORMAT" };
@@ -65,7 +74,7 @@ export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
   const pendingGroupMatches = await db.query.matches.findMany({
     where: and(eq(matches.phase, "group"), ne(matches.status, "final")),
   });
-  if (pendingGroupMatches.length > 0) {
+  if (!force && pendingGroupMatches.length > 0) {
     return { seeded: false, reason: "GROUP_STAGE_INCOMPLETE", pendingCount: pendingGroupMatches.length };
   }
 
@@ -96,7 +105,7 @@ export async function attemptKnockoutSeeding(): Promise<SeedAttemptResult> {
     const stillPending = await tx.query.matches.findMany({
       where: and(eq(matches.phase, "group"), ne(matches.status, "final")),
     });
-    if (stillPending.length > 0) {
+    if (!force && stillPending.length > 0) {
       return { seeded: false, reason: "GROUP_STAGE_INCOMPLETE", pendingCount: stillPending.length };
     }
 
