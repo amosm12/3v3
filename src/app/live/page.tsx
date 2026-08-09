@@ -14,9 +14,6 @@ export default function LivePage() {
 
   const inKnockout = data?.tournament?.status === "knockout" || data?.tournament?.status === "complete";
   const bracket = data?.bracket && data.bracket.length > 0 ? data.bracket : null;
-  const liveTeamIds = new Set(
-    (data?.liveMatches ?? []).flatMap((m) => [m.teamAId, m.teamBId]).filter((id): id is number => id != null),
-  );
   // Same top-16 computation used to actually build the bracket (group
   // winners/runners-up + best-record wildcards, or the flat global top 16),
   // reused here just to mark who's currently on pace to advance.
@@ -38,35 +35,16 @@ export default function LivePage() {
       {loading && !data && <p className="text-2xl text-neutral-400">Loading…</p>}
 
       {data && (
-        <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <LiveMatchesSection matches={data.liveMatches} />
-
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
-            {inKnockout && bracket ? (
-              <BracketSection matches={bracket} />
-            ) : (
-              <StandingsSection
-                standings={data.standings}
-                liveTeamIds={liveTeamIds}
-                advancingTeamIds={advancingTeamIds}
-              />
-            )}
-            <ThreePointSection attempts={data.threePoint} />
-          </div>
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
+          {inKnockout && bracket ? (
+            <BracketSection matches={bracket} />
+          ) : (
+            <StandingsSection standings={data.standings} advancingTeamIds={advancingTeamIds} />
+          )}
+          <ThreePointSection attempts={data.threePoint} />
         </div>
       )}
     </div>
-  );
-}
-
-// Matches the "● LIVE" badge used on the Live Now cards, reused anywhere
-// else we need to flag something as currently in progress.
-function LiveBadge() {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-base font-bold text-red-500">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-      LIVE
-    </span>
   );
 }
 
@@ -89,47 +67,11 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
   );
 }
 
-function LiveMatchesSection({ matches }: { matches: LiveSnapshot["liveMatches"] }) {
-  return (
-    <Panel className="shrink-0">
-      <SectionTitle accent="bg-red-500">Live Now</SectionTitle>
-      {matches.length === 0 && <p className="text-xl text-neutral-500">No games in progress.</p>}
-      {matches.length > 0 && (
-        <AutoScroll className="max-h-[24vh]">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {matches.map((m) => (
-              <div
-                key={m.id}
-                className="rounded-xl border-2 border-red-600 bg-linear-to-br from-neutral-900 to-neutral-950 p-4 shadow-lg shadow-red-950/60"
-              >
-                <div className="flex items-center justify-between text-base text-neutral-400">
-                  <span>{m.court?.label ?? "Court TBD"}</span>
-                  <LiveBadge />
-                </div>
-                <div className="mt-1 flex items-center justify-between text-2xl font-bold">
-                  <span className="truncate">{m.teamA?.name ?? "TBD"}</span>
-                  <span className="tabular-nums">{m.scoreA}</span>
-                </div>
-                <div className="mt-1 flex items-center justify-between text-2xl font-bold">
-                  <span className="truncate">{m.teamB?.name ?? "TBD"}</span>
-                  <span className="tabular-nums">{m.scoreB}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </AutoScroll>
-      )}
-    </Panel>
-  );
-}
-
 function StandingsSection({
   standings,
-  liveTeamIds,
   advancingTeamIds,
 }: {
   standings: LiveSnapshot["standings"];
-  liveTeamIds: Set<number>;
   advancingTeamIds: Set<number>;
 }) {
   if (!standings.format) {
@@ -144,13 +86,11 @@ function StandingsSection({
     <Panel className="flex h-full min-h-0 min-w-0 flex-col">
       <SectionTitle accent="bg-amber-500">Standings</SectionTitle>
       <AutoScroll className="min-h-0 flex-1 space-y-6 pr-1">
-        {standings.global && (
-          <StandingsTable rows={standings.global} liveTeamIds={liveTeamIds} advancingTeamIds={advancingTeamIds} />
-        )}
+        {standings.global && <StandingsTable rows={standings.global} advancingTeamIds={advancingTeamIds} />}
         {standings.groups.map((g) => (
           <div key={g.groupLabel}>
             <h3 className="mb-1 text-lg font-semibold text-neutral-300">Group {g.groupLabel}</h3>
-            <StandingsTable rows={g.standings} liveTeamIds={liveTeamIds} advancingTeamIds={advancingTeamIds} />
+            <StandingsTable rows={g.standings} advancingTeamIds={advancingTeamIds} />
           </div>
         ))}
       </AutoScroll>
@@ -160,11 +100,9 @@ function StandingsSection({
 
 function StandingsTable({
   rows,
-  liveTeamIds,
   advancingTeamIds,
 }: {
   rows: LiveSnapshot["standings"]["global"];
-  liveTeamIds: Set<number>;
   advancingTeamIds: Set<number>;
 }) {
   if (!rows) return null;
@@ -194,12 +132,7 @@ function StandingsTable({
                     r.rank
                   )}
                 </td>
-                <td className="px-3 py-2">
-                  <span className="flex items-center gap-2">
-                    {r.teamName}
-                    {liveTeamIds.has(r.teamId) && <LiveBadge />}
-                  </span>
-                </td>
+                <td className="px-3 py-2">{r.teamName}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {r.wins}-{r.losses}
                 </td>

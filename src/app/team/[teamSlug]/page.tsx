@@ -14,7 +14,6 @@ type TeamSchedule = {
 
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-neutral-700 text-neutral-200",
-  in_progress: "bg-red-800 text-red-100",
   final: "bg-green-800 text-green-100",
 };
 

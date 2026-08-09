@@ -8,7 +8,7 @@ export type TournamentStatus =
 export type GroupFormat = "groups_of_4" | "single_bracket_random_3";
 
 export type MatchPhase = "group" | "knockout";
-export type MatchStatus = "scheduled" | "in_progress" | "final";
+export type MatchStatus = "scheduled" | "final";
 
 export type Player = {
   id: number;
@@ -67,7 +67,6 @@ export type Match = {
   feedsIntoMatchId: number | null;
   feedsIntoSlot: "A" | "B" | null;
   bonusGame: boolean;
-  lockToken: string | null;
 };
 
 export type ThreePointAttempt = {
@@ -118,7 +117,6 @@ export type StandingsResponse = {
 
 export type LiveSnapshot = {
   tournament: { id: number; name: string; status: TournamentStatus; groupFormat: GroupFormat | null } | null;
-  liveMatches: MatchWithNames[];
   standings: StandingsResponse;
   threePoint: ThreePointAttempt[];
   bracket: MatchWithNames[] | null;

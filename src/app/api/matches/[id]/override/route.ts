@@ -12,7 +12,7 @@ type OverrideBody = Partial<{
   winnerId: number | null;
   teamAId: number | null;
   teamBId: number | null;
-  status: "scheduled" | "in_progress" | "final";
+  status: "scheduled" | "final";
   courtId: number | null;
   refId: number | null;
   refId2: number | null;

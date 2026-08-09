@@ -76,19 +76,15 @@ export const matches = pgTable(
     teamBId: integer("team_b_id").references(() => teams.id),
     courtId: integer("court_id").references(() => courts.id),
     refId: integer("ref_id").references(() => refs.id),
-    // Every match has 2 refs at the court; refId2 is the second one. Both
-    // are purely for display/assignment — the scoring lock-token flow
-    // doesn't distinguish between them, so either ref's device can Start
-    // and hold the lock.
+    // Every match has 2 refs at the court; refId2 is the second one.
     refId2: integer("ref_id_2").references(() => refs.id),
     scheduledTime: timestamp("scheduled_time"),
-    status: text("status").notNull().default("scheduled"), // scheduled|in_progress|final
+    status: text("status").notNull().default("scheduled"), // scheduled|final
     scoreA: integer("score_a").notNull().default(0),
     scoreB: integer("score_b").notNull().default(0),
     winnerId: integer("winner_id").references(() => teams.id),
     feedsIntoMatchId: integer("feeds_into_match_id"),
     feedsIntoSlot: text("feeds_into_slot"), // 'A'|'B'
-    lockToken: text("lock_token"),
     bonusGame: boolean("bonus_game").notNull().default(false), // odd-N pairing exception, see randomPairing.ts
   },
   (t) => [

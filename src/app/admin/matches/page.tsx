@@ -52,11 +52,6 @@ export default function AdminMatchesPage() {
     reload();
   }
 
-  async function unlock(m: MatchWithNames) {
-    await fetch(`/api/matches/${m.id}/unlock`, { method: "POST" });
-    reload();
-  }
-
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Match Overrides</h2>
@@ -112,14 +107,6 @@ export default function AdminMatchesPage() {
                     className="rounded bg-amber-800 px-3 py-1 text-sm font-medium"
                   >
                     Un-finalize
-                  </button>
-                )}
-                {m.status === "in_progress" && (
-                  <button
-                    onClick={() => unlock(m)}
-                    className="rounded bg-neutral-700 px-3 py-1 text-sm font-medium"
-                  >
-                    Unlock
                   </button>
                 )}
               </div>

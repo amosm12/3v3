@@ -5,16 +5,17 @@ import { matches } from "@/lib/db/schema";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-// Reopens a final match for correction. Deliberately narrow: does not
-// retract any winner already propagated into a downstream knockout slot —
-// that's a rare edge case left for manual admin cleanup (see plan notes).
+// Reopens a final match for correction (the ref can then resubmit a
+// corrected score). Deliberately narrow: does not retract any winner
+// already propagated into a downstream knockout slot — that's a rare edge
+// case left for manual admin cleanup (see plan notes).
 export async function POST(_request: Request, { params }: RouteParams) {
   const { id } = await params;
   const matchId = Number(id);
 
   const [updated] = await db
     .update(matches)
-    .set({ status: "in_progress", winnerId: null })
+    .set({ status: "scheduled", winnerId: null })
     .where(eq(matches.id, matchId))
     .returning();
 

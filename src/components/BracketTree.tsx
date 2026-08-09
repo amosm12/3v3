@@ -159,20 +159,8 @@ export default function BracketTree({ matches }: { matches: MatchWithNames[] }) 
                     if (el) matchRefs.current.set(m.id, el);
                     else matchRefs.current.delete(m.id);
                   }}
-                  className={`relative z-10 rounded-lg border bg-linear-to-br p-3 shadow-md ${
-                    m.status === "in_progress"
-                      ? "border-red-600 from-neutral-900 to-neutral-950 shadow-red-950/50"
-                      : "border-neutral-700 from-neutral-900 to-neutral-950 shadow-black/40"
-                  }`}
+                  className="relative z-10 rounded-lg border border-neutral-700 bg-linear-to-br from-neutral-900 to-neutral-950 p-3 shadow-md shadow-black/40"
                 >
-                  {m.status === "in_progress" && (
-                    <div className="mb-1 flex justify-end">
-                      <span className="flex items-center gap-1.5 text-xs font-bold text-red-500">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-                        LIVE
-                      </span>
-                    </div>
-                  )}
                   <div
                     className={`flex justify-between text-lg ${
                       m.winnerId != null && m.winnerId === m.teamAId ? "font-bold text-amber-400" : ""

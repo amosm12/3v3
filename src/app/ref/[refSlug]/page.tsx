@@ -9,13 +9,11 @@ type RefDetail = { id: number; slug: string; name: string; matches: MatchWithNam
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: "Scheduled",
-  in_progress: "In progress",
   final: "Final",
 };
 
 const STATUS_STYLE: Record<string, string> = {
   scheduled: "bg-neutral-700 text-neutral-200",
-  in_progress: "bg-red-800 text-red-100",
   final: "bg-green-800 text-green-100",
 };
 
