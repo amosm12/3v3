@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import BracketTree from "@/components/BracketTree";
+import { usePolling } from "@/components/usePolling";
 import type { MatchWithNames, StandingsResponse } from "@/lib/types";
 
 type Tournament = { id: number; status: string; groupFormat: string | null };
@@ -13,6 +14,14 @@ export default function AdminSeedingPage() {
   const [bracket, setBracket] = useState<MatchWithNames[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Live-polled (not the one-shot `reload()` below) so the "Generate
+  // Knockout Bracket" button actually pops up on its own the moment the
+  // last group-stage match goes final, for whoever's already sitting on
+  // this page watching it happen — no more silent background generation.
+  const { data: pendingGroupMatches } = usePolling<MatchWithNames[]>(
+    "/api/matches?phase=group&status=scheduled",
+  );
 
   function reload() {
     fetch("/api/admin/tournament").then((r) => r.json()).then(setTournament);
@@ -39,12 +48,12 @@ export default function AdminSeedingPage() {
   }
 
   const alreadySeeded = bracket.length > 0;
+  const groupStageStarted = tournament?.groupFormat != null;
+  const groupStageReady = groupStageStarted && pendingGroupMatches != null && pendingGroupMatches.length === 0;
   const r16Matches = useMemo(() => bracket.filter((m) => m.roundLabel === "Round of 16"), [bracket]);
 
   // Derived from the loaded bracket + standings rather than the seed()
-  // click's response, since seeding now usually happens automatically (the
-  // admin may land on this page after the fact, having never clicked the
-  // button) and this should be accurate either way.
+  // click's response, so it's accurate however the bracket got generated.
   const wildcardTeamNames = useMemo(() => {
     if (!alreadySeeded || standings?.format !== "groups_of_4") return [];
     const autoQualifiedIds = new Set(
@@ -72,12 +81,23 @@ export default function AdminSeedingPage() {
         <strong>{tournament?.groupFormat ?? "not set"}</strong>
       </p>
 
-      {!alreadySeeded && (
+      {!alreadySeeded && !groupStageStarted && (
+        <p className="text-sm text-neutral-500">
+          Generate groups or a pairing pool on the Format page first.
+        </p>
+      )}
+
+      {!alreadySeeded && groupStageStarted && !groupStageReady && (
+        <p className="text-sm text-neutral-500">
+          Waiting for the group stage to finish
+          {pendingGroupMatches != null && ` — ${pendingGroupMatches.length} match(es) not final yet`}.
+          The button to generate the bracket will appear here as soon as the last one is submitted.
+        </p>
+      )}
+
+      {!alreadySeeded && groupStageReady && (
         <>
-          <p className="text-sm text-neutral-500">
-            Seeding now happens automatically the moment the last group-stage match goes final. Use
-            this button only if it hasn&apos;t fired on its own.
-          </p>
+          <p className="text-sm text-green-400">Group stage complete — ready to seed the bracket.</p>
           <button
             onClick={seed}
             disabled={busy}

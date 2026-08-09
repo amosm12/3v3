@@ -26,11 +26,13 @@ export default function CheckinPage() {
     [teams, overrides],
   );
 
+  const query = search.trim().toLowerCase();
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return displayTeams;
-    return displayTeams.filter((t) => t.name.toLowerCase().includes(q));
-  }, [displayTeams, search]);
+    if (!query) return displayTeams;
+    return displayTeams.filter(
+      (t) => t.name.toLowerCase().includes(query) || t.players.some((p) => p.name.toLowerCase().includes(query)),
+    );
+  }, [displayTeams, query]);
 
   const checkedIn = displayTeams.filter((t) => t.checkedIn).length;
   const total = displayTeams.length;
@@ -49,7 +51,7 @@ export default function CheckinPage() {
       <input
         autoFocus
         className="mt-4 w-full rounded-lg border border-neutral-600 bg-neutral-800 px-4 py-3 text-lg"
-        placeholder="Search team name…"
+        placeholder="Search team or player name…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -57,6 +59,13 @@ export default function CheckinPage() {
       <ul className="mt-3 space-y-2">
         {filtered.map((team) => {
           const isExpanded = expandedId === team.id;
+          // Only worth pointing out when the match came from a player, not
+          // the team name itself — otherwise it's redundant with the name
+          // already shown.
+          const matchedPlayers =
+            query && !team.name.toLowerCase().includes(query)
+              ? team.players.filter((p) => p.name.toLowerCase().includes(query)).map((p) => p.name)
+              : [];
           return (
             <li key={team.id}>
               <button
@@ -64,8 +73,13 @@ export default function CheckinPage() {
                 onClick={() => setExpandedId(isExpanded ? null : team.id)}
                 className="flex w-full items-center justify-between rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 text-left hover:bg-neutral-800 active:bg-neutral-700"
               >
-                <span className="text-lg">{team.name}</span>
-                <span className="text-sm text-neutral-400">
+                <span className="flex flex-col items-start">
+                  <span className="text-lg">{team.name}</span>
+                  {matchedPlayers.length > 0 && (
+                    <span className="text-xs text-blue-400">Matches: {matchedPlayers.join(", ")}</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-right text-sm text-neutral-400">
                   {team.checkedIn ? "Checked in" : "Not checked in"} ·{" "}
                   {team.paid ? "Paid" : "Unpaid"}
                 </span>

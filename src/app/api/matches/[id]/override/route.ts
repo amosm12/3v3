@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches } from "@/lib/db/schema";
-import { propagateWinnerInTransaction, maybeAutoSeedKnockout } from "@/lib/matchFinalize";
+import { propagateWinnerInTransaction } from "@/lib/matchFinalize";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -55,8 +55,6 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     return updated;
   });
-
-  maybeAutoSeedKnockout(result, existing.status);
 
   return NextResponse.json(result);
 }
