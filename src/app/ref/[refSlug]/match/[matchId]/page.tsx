@@ -15,6 +15,29 @@ export default function ScorekeepingPage() {
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  async function resetScore() {
+    if (!match) return;
+    if (
+      !confirm(
+        `Reset the final score for ${match.teamA?.name ?? "Team A"} vs ${match.teamB?.name ?? "Team B"}? You'll need to resubmit.`,
+      )
+    ) {
+      return;
+    }
+
+    setSubmitting(true);
+    setBanner(null);
+    try {
+      const res = await fetch(`/api/matches/${matchId}/unfinalize`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setBanner(body.message ?? "Could not reset score.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function submit() {
     if (!match) return;
     const scoreA = Number(scoreAInput ?? match.scoreA);
@@ -88,9 +111,18 @@ export default function ScorekeepingPage() {
       </div>
 
       {isFinal && (
-        <p className="mt-3 rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-neutral-300">
-          This match is final.
-        </p>
+        <>
+          <p className="mt-3 rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-neutral-300">
+            This match is final.
+          </p>
+          <button
+            onClick={resetScore}
+            disabled={submitting}
+            className="mt-3 w-full rounded-lg border border-amber-700 bg-amber-950 py-3 text-base font-semibold text-amber-200 disabled:opacity-40"
+          >
+            {submitting ? "Resetting…" : "Reset score"}
+          </button>
+        </>
       )}
 
       <div className="mt-6 grid grid-cols-2 gap-4">
